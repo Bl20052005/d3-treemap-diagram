@@ -1,0 +1,56 @@
+body {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    display: flex;
+    flex-direction:column;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(156, 27, 66);
+}
+
+.tile:hover {
+    opacity: 1;
+}
+
+.tile-text, .legend-text {
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    pointer-events: none;
+}
+
+#tooltip {
+    width: auto;
+    height: auto;
+    background-color: rgb(151, 15, 94);
+    color: white;
+    transition: opacity 0.1s visibility 0.1s background-color 0.1s;
+    position: fixed;
+    padding: 10px;
+    opacity: 0;
+    visibility: hidden;
+    border-radius: 20px;
+    font-size: 18px;
+    text-align: center;
+} 
+
+.container {
+    background-color: #eb9e9e;
+    padding: 10px;
+    display: flex;
+    flex-direction:column;
+    align-items: center;
+    justify-content: center;
+}
+
+#title {
+    margin: 0;
+    padding: 5px;
+    font-weight: normal;
+    font-size: 35px;
+}
+
+#description {
+    margin: 0;
+    padding: 5px;
+    font-weight: normal;
+    font-size: 18px;
+}

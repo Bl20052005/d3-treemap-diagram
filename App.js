@@ -8,6 +8,18 @@ fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-ga
         .then(response => response.json())
         .then(movieSalesData => {
 
+            let colorObject = {};
+
+            let colorInterpolator = d3.interpolateCubehelixLong("#bd0868", "#486321");
+
+            let sumOfAll = 0;
+            videoGameData["children"].forEach((elem, index) => {
+                elem["children"].forEach(e => {
+                    sumOfAll += parseFloat(e["value"]);
+                });
+                colorObject[elem["name"]] = colorInterpolator(index / videoGameData["children"].length);
+            });
+
             videoGameData["children"].sort((a, b) => {
                 let bSum = 0;
                 let aSum = 0;
@@ -22,29 +34,75 @@ fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-ga
                 return bSum - aSum;
             });
 
+            let resizer = 480000 / sumOfAll;
+
             let videoGameDataChildren = videoGameData["children"].map(elem => {
                 let sum = 0;
                 elem["children"].forEach(e => {
-                    sum += parseFloat(e["value"]) * 300;
+                    sum += parseFloat(e["value"]) * resizer;
                 });
                 return [sum, [elem["name"]]];
             })
 
-            let sumOfAll = 0;
-            videoGameDataChildren.forEach(elem => {
-                sumOfAll += elem[0];
-            })
-
-            let trueW = 1.4 * Math.sqrt(sumOfAll / 1.4);
-            let trueH = Math.sqrt(sumOfAll / 1.4);
+            let trueW = 800;
+            let trueH = 600;
             let w = trueW;
             let h = trueH;
             let dimensions = [[], [], [], []]; //height, width, x, y
 
             let svg = d3.select("body").append("svg")
             .attr("id", "svg")
-            .attr("width", w)
-            .attr("height", h)
+            .attr("width", w + 60)
+            .attr("height", h + 60)
+            .attr("class", "container")
+
+            let legendSvg = d3.select("body").append("svg")
+            .attr("class", "container")
+            .attr("id", "legend")
+            .attr("width", 400)
+            .attr("height", 200)
+
+            legendSvg.selectAll("rect")
+            .data(Object.values(colorObject))
+            .enter()
+            .append("rect")
+            .attr("width", 15)
+            .attr("height", 15)
+            .attr("class", "legend-item")
+            .attr("y", (d, i) => i % 6 * 30 + 10)
+            .attr("x", (d, i) => Math.floor(i / 6) * 133.3 + 20)
+            .attr("fill", (d) => d)
+
+            legendSvg.selectAll("text")
+            .data(Object.keys(colorObject))
+            .enter()
+            .append("text")
+            .attr("class", "legend-text")
+            .attr("y", (d, i) => i % 6 * 30 + 23)
+            .attr("x", (d, i) => Math.floor(i / 6) * 133.3 + 40)
+            .text((d) => d)
+
+            const onMouseOver = (e, d) => {
+                document.getElementById("tooltip").style.opacity = "0.9";
+                document.getElementById("tooltip").style.visibility = "visible";
+            }
+
+            const onMouseMove = (e, d) => {
+                const [x, y] = d3.pointer(e);
+                const left = document.getElementById("svg").getBoundingClientRect().left;
+                const top = document.getElementById("svg").getBoundingClientRect().top;
+                const toolTip = document.getElementById("tooltip");
+                toolTip.style.top = top + y - 110 + "px";
+                toolTip.style.left = left + x - 50 + "px";
+                toolTip.innerText = `Name: ${d[0]}\nCategory: ${d[1]}\nValue: ${Math.round(d[2] * 100) / 100}`;
+                d3.select("#tooltip")
+                .attr("data-value", d[2]);
+            }
+        
+            const onMouseLeave = () => {
+                document.getElementById("tooltip").style.opacity = "0";
+                document.getElementById("tooltip").style.visibility = "hidden";
+            }
 
             let createBoxv2 = (row, width, rowIds, additional) => {
 
@@ -57,24 +115,64 @@ fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-ga
                     let cur = 0;
                     for(let i = 0; i < row.length; i++) {
                         svg.append("rect")
-                        .attr("class", "tile")
-                        .attr("id", "id" + rowIds[i][0])
+                        .data([[rowIds[i][0], rowIds[i][1], row[i] / resizer]])
+                        .attr("class", "tile " + rowIds[i][1])
+                        .attr("id", "id-" + rowIds[i][0].replace(/ /g, "-"))
                         .attr("width", sum / width - 1)
                         .attr("height", row[i] / (sum / width) - 1)
-                        .attr("x", additional[0] + trueW - w)
-                        .attr("y", additional[1] + cur)
+                        .attr("x", additional[0] + trueW - w + 30)
+                        .attr("y", additional[1] + cur + 30)
+                        .attr("data-name", rowIds[i][0])
+                        .attr("data-category", rowIds[i][1])
+                        .attr("data-value", row[i] / resizer)
+                        .attr("opacity", "0.9")
+                        .attr("fill", colorObject[rowIds[i][1]])
+                        .on("mouseover", onMouseOver)
+                        .on("mousemove", onMouseMove)
+                        .on("mouseleave", onMouseLeave)
+
+                        svg.append("text")
+                        .attr("x", additional[0] + trueW - w + (sum / width - 1) / 2 + 30)
+                        .attr("y", additional[1] + cur + (row[i] / (sum / width) - 1) / 2 + 30)
+                        .attr("font-size", (sum / width - 1) / 7)
+                        .attr("class", "tile-text")
+                        .attr("visibility", sum / width - 1 > 55 ? "visibile" : "hidden")
+                        .attr("fill", "#dbdbdb")
+                        .attr("text-anchor", "middle")
+                        .text(rowIds[i][0].length > 12 ? rowIds[i][0].substring(0, 12) + "..." : rowIds[i][0]);
+
                         cur += row[i] / (sum / width);
                     }
                 } else {
                     let cur = 0;
                     for(let i = 0; i < row.length; i++) {
                         svg.append("rect")
-                        .attr("class", "tile")
-                        .attr("id", "id" + rowIds[i][0])
+                        .data([[rowIds[i][0], rowIds[i][1], row[i] / resizer]])
+                        .attr("class", "tile " + rowIds[i][1])
+                        .attr("id", "id-" + rowIds[i][0].replace(/ /g, "-"))
                         .attr("height", sum / width - 1)
                         .attr("width", row[i] / (sum / width) - 1)
-                        .attr("x", additional[0] + trueW - w + cur)
-                        .attr("y", additional[1] + h - (sum / width))
+                        .attr("x", additional[0] + trueW - w + cur + 30)
+                        .attr("y", additional[1] + h - (sum / width) + 30)
+                        .attr("data-name", rowIds[i][0])
+                        .attr("data-category", rowIds[i][1])
+                        .attr("data-value", row[i] / resizer)
+                        .attr("opacity", "0.9")
+                        .attr("fill", colorObject[rowIds[i][1]])
+                        .on("mouseover", onMouseOver)
+                        .on("mousemove", onMouseMove)
+                        .on("mouseleave", onMouseLeave)
+
+                        svg.append("text")
+                        .attr("x", additional[0] + trueW - w + cur + (row[i] / (sum / width) - 1) / 2 + 30)
+                        .attr("y", additional[1] + h - (sum / width) + (sum / width - 1) / 2 + 30)
+                        .attr("font-size", (row[i] / (sum / width) - 1) / 7)
+                        .attr("class", "tile-text")
+                        .attr("visibility", row[i] / (sum / width) - 1 > 55 ? "visibile" : "hidden")
+                        .attr("fill", "#dbdbdb")
+                        .attr("text-anchor", "middle")
+                        .text(rowIds[i][0].length > 12 ? rowIds[i][0].substring(0, 12) + "..." : rowIds[i][0]);
+
                         cur += row[i] / (sum / width);
                     }
                 }
@@ -176,9 +274,8 @@ fetch("https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-ga
             videoGameData["children"].forEach((elem, index) => {
                 let total = [];
                 elem["children"].forEach(e => {
-                    total.push([parseFloat(e["value"]) * 300, [e["name"]]]);
+                    total.push([parseFloat(e["value"]) * resizer, [e["name"], elem["name"]]]);
                 })
-                total.sort((a, b) => b[0] - a[0]);
 
                 trueW = dimensions[1][index];
                 trueH = dimensions[0][index];
